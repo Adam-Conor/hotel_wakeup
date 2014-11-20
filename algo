@@ -1,0 +1,32 @@
+two threads {
+	one to register wake up calls
+	one to send wake up
+}
+keep track of wake up calls
+generating a wake up is random room number and random wake up time
+making a wake-up call is specified by how many seconds since Epoch
+must use heap to store data(research to find how to do)
+root is always the newest wake up call
+
+random wake up call generated between 0 and 5 seconds
+wake up calls random number between 0 100 seconds
+
+must track what calls came in and what ones went out
+
+
+users put in 1420482150 we subtract this from current time and 
+wait until then
+we generate a number > time and subtract from current time and
+wait until then
+
+thread one {
+	start sleep 0-5
+	generate wake up
+	log wake up
+}
+
+thread two {
+	check data structure for data
+	wait until next alarm
+	alarm
+}
