@@ -30,3 +30,7 @@ thread two {
 	wait until next alarm
 	alarm
 }
+
+first plan of action.
+
+Generate a random room and a random wake up time.
