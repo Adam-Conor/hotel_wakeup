@@ -1,3 +1,9 @@
+/*
+ * Conor Smyth 12452382
+ * Adam O'Flynn 12378651
+ * All work is our own
+ */
+
 #include <stdio.h>
 #include <pthread.h>
 #include <signal.h>
