@@ -31,6 +31,4 @@ thread two {
 	alarm
 }
 
-first plan of action.
-
-Generate a random room and a random wake up time.
+Next generate random wkae up time
