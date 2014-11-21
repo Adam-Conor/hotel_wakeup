@@ -15,16 +15,39 @@
 #define MAXROOM 8000
 
 typedef struct {
+	int roomNumber;
+	time_t callTime;
+} wakeupCall_t;
+
+typedef struct {
+	wakeupCall_t time;
+	struct Node *next;
+} Node;
+
+typedef struct {
 	int generated;
 	int pending;
 	int called;
 	int expired;
 } logs_t;
 
-typedef struct {
-	int roomNumber;
-	time_t callTime;
-} wakeupCall_t;
+
+Node *insert(Node *root, wakeupCall_t c) {
+	Node *newCall = (Node *) malloc(sizeof(Node));
+	newCall->time = c;
+
+	if(root == NULL) {
+		newCall->next = NULL;
+		return newCall;
+	}
+
+	if(c.callTime < root->time.callTime) {
+		newCall->next = root;
+		return newCall;
+	}
+
+	root = insert(root->next, c);
+}
 
 static wakeupCall_t newCall() {
 	wakeupCall_t c;
