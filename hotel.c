@@ -61,8 +61,8 @@ static void randomSleep() {
 }
 
 static void * generateCall(void *log_in) {
-	//srand(time(NULL));
 	logs_t *log = log_in;
+
 	while(1) {
 		randomSleep();
 
@@ -80,8 +80,4 @@ int main() {
 	pthread_create(&genCall_t, NULL, &generateCall, (void *)&log);
 
 	pthread_join(genCall_t, NULL);
-
-	//int roomNumber = randomRoom();
-	//Registering: RoomNumber Day Month Date Time Year
-	//printf("Registering: %d\n", roomNumber);
 }
