@@ -11,7 +11,9 @@
 #include <stdbool.h>
 
 #define SLEEP 5
-#define MAXROOM 5000
+#define MAXROOM 8000
+
+int seed = 1;
 
 typedef struct {
 	int generated;
@@ -23,37 +25,39 @@ typedef struct {
 typedef struct {
 	int roomNumber;
 	int callTime;
-} room_t;
+} wakeupCall_t;
 
-static room_t newRoom() {
-	room_t r;
-	r.roomNumber = randomRoom();
-	r.callTime = 10;
-	return r;
+static wakeupCall_t newCall() {
+	wakeupCall_t c;
+	c.roomNumber = randomRoom();
+	c.callTime = 10;
+	return c;
+}
+
+static int getRandomNumber(int x) {
+	unsigned int *seedp = &seed;
+	seed++;
+	return rand_r(seedp) % x;
+}
+
+static int getRandomRoom() {
+	return getRandomNumber(MAXROOM);
 }
 
 int randomRoom() {
-	//srand(time(NULL));
-
-	return rand_r() % MAXROOM;
+	return getRandomRoom();
 }
 
-static void showRoom(room_t r) {
-	printf("Room Number: %d, Call Time: %d\n", r.roomNumber, r.callTime);
+static void showCall(wakeupCall_t c) {
+	printf("Room Number: %d, Call Time: %d\n", c.roomNumber, c.callTime);
 }
 
 static int getRandomSleep() {
-	//srand(time(NULL));
-
-	return rand_r() % SLEEP;
+	return getRandomNumber(SLEEP);
 }
 
 static void randomSleep() {
-	int randomNumber = getRandomSleep();
-
-	printf("%d\n", randomNumber);
-
-	sleep(randomNumber);
+	sleep(getRandomSleep());
 }
 
 static void * generateCall(void *log_in) {
@@ -62,15 +66,14 @@ static void * generateCall(void *log_in) {
 	while(1) {
 		randomSleep();
 
-		room_t room = newRoom();
+		wakeupCall_t call = newCall();
 
-		showRoom(room);
+		showCall(call);
 	}
 }
 
 int main() {
 	logs_t log;
-	srand(time(NULL));
 
 	pthread_t genCall_t;
 
