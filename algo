@@ -30,5 +30,3 @@ thread two {
 	wait until next alarm
 	alarm
 }
-
-Next generate random wkae up time

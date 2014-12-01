@@ -14,25 +14,31 @@
 #define SLEEP 5
 #define MAXROOM 8000
 
-typedef struct {
+typedef struct { //stuct for wake up time
 	int roomNumber;
 	time_t callTime;
 } wakeupCall_t;
 
-typedef struct {
+typedef struct { //stuct for nodes in heap
 	wakeupCall_t time;
 	struct Node *next;
 } Node;
 
-typedef struct {
+typedef struct { //stuct for holding logs
 	int generated;
 	int pending;
 	int called;
 	int expired;
 } logs_t;
 
+void initLog(log_t *log) {
+	log.generated = 0;
+	log.pending = 0;
+	log.called = 0;
+	log.expired = 0;
+}//initialise logs
 
-Node *insert(Node *root, wakeupCall_t c) {
+Node *add(Node *root, wakeupCall_t c) {
 	Node *newCall = (Node *) malloc(sizeof(Node));
 	newCall->time = c;
 
@@ -46,15 +52,15 @@ Node *insert(Node *root, wakeupCall_t c) {
 		return newCall;
 	}
 
-	root = insert(root->next, c);
-}
+	root = add(root->next, c);
+}//add a node to heap
 
 static wakeupCall_t newCall() {
 	wakeupCall_t c;
 	c.roomNumber = randomRoom();
 	c.callTime = randomCall();
 	return c;
-}
+}//generate a new wake up call
 
 static int getRandomNumber(int x) {
 	unsigned int seedp = time(NULL);
@@ -63,11 +69,11 @@ static int getRandomNumber(int x) {
 
 static int getRandomRoom() {
 	return getRandomNumber(MAXROOM);
-}
+}//return a random room number
 
 static int getRandomCall() {
 	return time(NULL) + getRandomNumber(100);
-}
+}//return random wake up time
 
 int randomRoom() {
 	return getRandomRoom();
@@ -84,7 +90,7 @@ static void showCall(wakeupCall_t c) {
 
 static int getRandomSleep() {
 	return getRandomNumber(SLEEP);
-}
+}//returns random sleep time
 
 static void randomSleep() {
 	sleep(getRandomSleep());
@@ -107,10 +113,7 @@ static void * generateCall(void *log_in) {
 int main() {
 	logs_t log;
 
-	log.generated = 0;
-	log.pending = 0;
-	log.called = 0;
-	log.expired = 0;
+	initLog(&log);
 
 	pthread_t genCall_t;
 
