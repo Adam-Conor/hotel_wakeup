@@ -42,51 +42,48 @@ typedef struct { //struct for holding shared data
 
 /* Node methods */
 
-Node *add(Node *root, wakeupCall_t c) {
+Node *addNode(Node *root, wakeupCall_t c) {
 	Node *newCall = (Node *) malloc(sizeof(Node));
 	newCall->time = c;
-	newCall->next = NULL;
+	//newCall->next = NULL;
 
 	if(root == NULL) {
+		newCall->next = NULL;
 		return newCall;
 	}//if the heap empty
 
-	if(root->next == NULL) {
-		root->next = newCall;
-		return root;
-	}
-
-	/*if(newCall->time.callTime < root->time.callTime) {
+	if(newCall->time.callTime < root->time.callTime) {
 		newCall->next = root;
 		return newCall;
-	}//still not working properly
-	*/
+	}
 
 	Node *prev = root;
 	Node *current = root->next;
 
-	while(current->next != NULL && current->time.callTime > newCall->time.callTime) {
+	while(current->next != NULL && newCall->time.callTime > current->time.callTime) {
 		prev = current;
 		current = current->next;
 	}
 	
 	newCall->next = current;
 	prev->next = newCall;
-	//current->next = newCall;
-
 
 	return root;
 }//add a node to heap
 
-/* Add remove node to remove triggered alarms */
+Node *removeNode(Node *root) {
+	Node *next = root->next;
 
-/* */
+	free(root);
+
+	return next;
+}//remove first node from heap
 
 void showHeap(Node *root) {
 	Node *temp = root;
 
 	while(temp != NULL) {
-		printf("ShowHeap %04d %s\n", temp->time.roomNumber, ctime(&temp->time.callTime));
+		printf("%04d %s\n", temp->time.roomNumber, ctime(&temp->time.callTime));
 		temp = temp->next;
 	}
 }
@@ -156,7 +153,7 @@ static void showCall(wakeupCall_t c) {
 
 /* log methods */
 
-void log_new(logs_t *log) {
+void logNew(logs_t *log) {
 	log->generated++;
 }
 
@@ -174,11 +171,11 @@ static void * generateCall(void *data_in) {
 		showCall(call);
 
 		//add the call to the heap
-		data->heap = add(data->heap, call);
+		data->heap = addNode(data->heap, call);
 		showHeap(data->heap);
 
 		//log the new call
-		log_new(&data->log);
+		logNew(&data->log);
 		printf("%d\n", data->log.generated);
 	}
 }
@@ -187,11 +184,15 @@ int main() {
 	//delcare shared data
 	sharedData_t data;
 
+	//initialise shared data
 	initData(&data);
 
+	//initialise threads
 	pthread_t genCall_t;
 
+	//create threads
 	pthread_create(&genCall_t, NULL, &generateCall, (void *)&data);
 
+	//join threads
 	pthread_join(genCall_t, NULL);
-}
+}//main
