@@ -180,6 +180,21 @@ static void * generateCall(void *data_in) {
 	}
 }
 
+static void * makeCall(void *data_in) {
+	sharedData_t *data = data_in;
+	sigset_t set;
+	int sig;
+
+	while(sig != SIGINT) {
+		//if no data wait
+		//get top of heap
+		//remove top of heap
+		//if data available sleep until time
+		//make call(message)
+		//log call made
+	}
+}
+
 int main() {
 	//delcare shared data
 	sharedData_t data;
@@ -189,10 +204,13 @@ int main() {
 
 	//initialise threads
 	pthread_t genCall_t;
+	//pthread makeCall_t;
 
 	//create threads
 	pthread_create(&genCall_t, NULL, &generateCall, (void *)&data);
+	//pthread_create(&makeCall_,t NULL, &makeCall, (void *)&data);
 
 	//join threads
 	pthread_join(genCall_t, NULL);
+	//pthread_join(makeCall_t, NULL);
 }//main
