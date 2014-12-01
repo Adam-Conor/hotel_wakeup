@@ -31,29 +31,33 @@ typedef struct { //stuct for holding logs
 	int expired;
 } logs_t;
 
-void initLog(log_t *log) {
-	log.generated = 0;
-	log.pending = 0;
-	log.called = 0;
-	log.expired = 0;
+void initLog(logs_t *log) {
+	log->generated = 0;
+	log->pending = 0;
+	log->called = 0;
+	log->expired = 0;
 }//initialise logs
 
-Node *add(Node *root, wakeupCall_t c) {
+/*Node *add(Node *root, wakeupCall_t c) {
 	Node *newCall = (Node *) malloc(sizeof(Node));
+	newCall = root;
 	newCall->time = c;
 
 	if(root == NULL) {
 		newCall->next = NULL;
 		return newCall;
-	}
+	}//if the heap empty
 
 	if(c.callTime < root->time.callTime) {
-		newCall->next = root;
+		Node *diff  = (Node *) malloc(sizeof(Node));
+		diff = root;
+		newCall->next = diff;
 		return newCall;
-	}
+	}//if 
 
 	root = add(root->next, c);
 }//add a node to heap
+*/
 
 static wakeupCall_t newCall() {
 	wakeupCall_t c;
@@ -95,6 +99,10 @@ static int getRandomSleep() {
 static void randomSleep() {
 	sleep(getRandomSleep());
 }//sleep for a random time
+
+/*
+ * at the moment just generates random wake up calls at random times
+ */
 
 static void * generateCall(void *log_in) {
 	logs_t *log = log_in;
