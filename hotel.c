@@ -15,20 +15,21 @@
 
 #define SLEEP 5
 #define MAXROOM 8000
+#define ARRAY_SIZE 1000 //STILL NEED TO DECIDE THIS
 
 /* define all structs */
 
-typedef struct { //stuct for wake up time
+typedef struct wakeupCall_t { //stuct for wake up time
 	int roomNumber;
 	time_t callTime;
 } wakeupCall_t;
 
-typedef struct Node { //stuct for nodes in heap
-	wakeupCall_t time;
-	struct Node *next;
-} Node;
+typedef struct Heap {
+	struct wakeupCall_t times[ARRAY_SIZE];
+	int numElements;
+} Heap;
 
-typedef struct { //stuct for holding logs
+typedef struct { //struct for holding logs
 	int generated;
 	int pending;
 	int called;
@@ -37,55 +38,23 @@ typedef struct { //stuct for holding logs
 
 typedef struct { //struct for holding shared data
 	logs_t log;
-	Node *heap;
+	Heap *heap;
 } sharedData_t;
 
-/* Node methods */
+/* Heap methods */
 
-Node *addNode(Node *root, wakeupCall_t c) {
-	Node *newCall = (Node *) malloc(sizeof(Node));
-	newCall->time = c;
-	//newCall->next = NULL;
+void addTime(Heap *heap, wakeupCall_t c) {
+	heap->numElements++;
+	heap->times[heap->numElements] = c;
 
-	if(root == NULL) {
-		newCall->next = NULL;
-		return newCall;
-	}//if the heap empty
+	int current = heap->numElements;
 
-	if(newCall->time.callTime < root->time.callTime) {
-		newCall->next = root;
-		return newCall;
+	while(heap->times[current / 2].callTime > c.callTime) {
+		heap->times[current] = heap->times[current / 2];
+		current /= 2;
 	}
 
-	Node *prev = root;
-	Node *current = root->next;
-
-	while(current->next != NULL && newCall->time.callTime > current->time.callTime) {
-		prev = current;
-		current = current->next;
-	}
-	
-	newCall->next = current;
-	prev->next = newCall;
-
-	return root;
-}//add a node to heap
-
-Node *removeNode(Node *root) {
-	Node *next = root->next;
-
-	free(root);
-
-	return next;
-}//remove first node from heap
-
-void showHeap(Node *root) {
-	Node *temp = root;
-
-	while(temp != NULL) {
-		printf("%04d %s\n", temp->time.roomNumber, ctime(&temp->time.callTime));
-		temp = temp->next;
-	}
+	heap->times[current] = c;
 }
 
 /* Initialisation methods */
@@ -97,8 +66,8 @@ void initLog(logs_t *log) {
 	log->expired = 0;
 }
 
-void initNode(Node *ned) {
-	ned = (Node *) malloc(sizeof(Node));
+void initHeap(Heap *harry) {
+	harry->numElements = 0;
 }
 
 void initData(sharedData_t *data) {
@@ -140,10 +109,10 @@ static void randomSleep() {
 /* wakeupCall methods */
 
 static wakeupCall_t newCall() {
-  wakeupCall_t c;
-  c.roomNumber = randomRoom();
-  c.callTime = randomCall();
-  return c;
+	wakeupCall_t c;
+	c.roomNumber = randomRoom();
+	c.callTime = randomCall();
+	return c;
 }//generate a new wake up call
 
 static void showCall(wakeupCall_t c) {
