@@ -8,11 +8,7 @@ making a wake-up call is specified by how many seconds since Epoch
 must use heap to store data(research to find how to do)
 root is always the newest wake up call
 
-random wake up call generated between 0 and 5 seconds
-wake up calls random number between 0 100 seconds
-
 must track what calls came in and what ones went out
-
 
 users put in 1420482150 we subtract this from current time and 
 wait until then
