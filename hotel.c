@@ -14,9 +14,11 @@
 /* Declare constants */
 
 #define SLEEP 5
+#define LATEST_TIME 100
 #define MAXROOM 8000
+#define ARRAY_SIZE 1000
 
-/* define all structs */
+/* Define structs */
 
 typedef struct wakeupCall_t { //stuct for wake up time
 	int roomNumber;
@@ -24,7 +26,7 @@ typedef struct wakeupCall_t { //stuct for wake up time
 } wakeupCall_t;
 
 typedef struct Heap {
-	struct wakeupCall_t times[MAXROOM];
+	struct wakeupCall_t times[ARRAY_SIZE];
 	int numElements;
 } Heap;
 
@@ -38,12 +40,33 @@ typedef struct logs_t { //struct for holding logs
 typedef struct { //struct for holding shared data
 	logs_t log;
 	Heap heap;
+	pthread_mutex_t m;
+	pthread_cond_t cv;
 } sharedData_t;
 
 /* Heap methods */
 
-void addTime(Heap *heap, wakeupCall_t c) {
+/*struct wakeupCall_t resizeArray(Heap *heap) {
+	struct wakeupCall_t temp[ARRAY_SIZE * 2];
+	int i;
+	for(i = 0; i < ARRAY_SIZE; i++) {
+		temp[i] = heap->times[i];
+	}
+
+	//heap->times = ptr;
+	return temp;
+}
+*/
+
+void addTime(Heap *heap, wakeupCall_t c) { //add element to heap
 	heap->numElements++;
+	
+	/* resize array if too big */
+	/*if(heap->numElements > ARRAY_SIZE) {
+		resizeArray(heap);
+	}
+	*/
+
 	heap->times[heap->numElements] = c;
 
 	int current = heap->numElements;
@@ -54,6 +77,40 @@ void addTime(Heap *heap, wakeupCall_t c) {
 	}
 
 	heap->times[current] = c;
+}
+
+wakeupCall_t removeFirst(Heap *heap) {
+	wakeupCall_t first;
+	wakeupCall_t last;
+	int child;
+	int current;
+
+	first = heap->times[1];
+	last = heap->times[heap->numElements--];
+
+	for(current = 1; (current * 2) <= heap->numElements; current = child) {
+		child = current * 2;
+
+		if(child != heap->numElements && (heap->times[child + 1].callTime < heap->times[child].callTime)) {
+			child++;
+		}
+
+		if(last.callTime > heap->times[child].callTime) {
+			heap->times[current].callTime = heap->times[child].callTime;
+		} else {
+			break;
+		}
+	}
+
+	heap->times[current].callTime = last.callTime;
+	return first;
+}
+
+void showHeap(Heap james) {
+	int i;
+	for(i = 1; i < james.numElements; i++) {
+		printf("%s\n", ctime(&james.times[i].callTime));
+	}
 }
 
 /* Initialisation methods */
@@ -69,9 +126,18 @@ void initHeap(Heap *harry) {
 	harry->numElements = 0;
 }
 
+void initMutex(pthread_mutex_t *tom) {
+	pthread_mutex_init(tom, NULL);
+}
+
+void initCV(pthread_cond_t *cv) {
+	cv = PTHREAD_COND_INITIALIZER;
+}
 
 void initData(sharedData_t *data) {
 	initLog(&data->log);
+	initMutex(&data->m);
+	initCV(&data->cv);
 	initHeap(&data->heap);
 }
 
@@ -87,7 +153,7 @@ static int getRandomRoom() {
 }//return a random room number
 
 static int getRandomCall() {
-	return time(NULL) + getRandomNumber(100);
+	return time(NULL) + getRandomNumber(LATEST_TIME);
 }//return random wake up time
 
 int randomRoom() {
@@ -113,47 +179,53 @@ static wakeupCall_t newCall() {
 	c.roomNumber = randomRoom();
 	c.callTime = randomCall();
 	return c;
-}//generate a new wake up call
+}//generate a random call
 
 static void showCall(wakeupCall_t c) {
-	//needs to add to data structure
-	printf("Registering:\t%04d %s\n", c.roomNumber, ctime(&c.callTime));
-}
+	printf("Registering:\t%4d %s\n", c.roomNumber, ctime(&c.callTime));
+}//show a call
+
+static void showWakeUp(wakeupCall_t c) {
+	printf("Wake Up:\t%4d %s\n", c.roomNumber, ctime(&c.callTime));
+}//show a wake up
 
 /* log methods */
 
 void logNew(logs_t *log) {
 	log->generated++;
-}
+	log->pending++;
+}//Log new call
 
 /* at the moment just generates random wake up calls at random times */
-
-static void * generateCall(void *data_in) {
+static void * guest(void *data_in) {
 	sharedData_t *data = data_in;
+	int sig;
 
-	while(1) {
-		//sleep for random seconds
+	while(sig != SIGINT) {
+		/* Sleep for random time */
 		randomSleep();
 
-		//generate a wake up call
+		/* Generate and show wake up call */
 		wakeupCall_t call = newCall();
 		showCall(call);
 
 		/* add the call to the heap */
 		addTime(&data->heap, call);
 
-		//log the new call
+		/* Log new call */
 		logNew(&data->log);
-		printf("%d\n", data->log.generated);
 	}
 }
 
-/*static void * makeCall(void *data_in) {
+static void * waiter(void *data_in) {
 	sharedData_t *data = data_in;
 	sigset_t set;
 	int sig;
 
 	while(sig != SIGINT) {
+		while(1) {
+			pthread_cond_wait
+		}
 		//if no data wait
 		//get top of heap
 		//remove top of heap
@@ -162,24 +234,37 @@ static void * generateCall(void *data_in) {
 		//log call made
 	}
 }
-*/
+
+static void handler(int signo) {
+	printf("SIGINT recieved. Cancelling threads");
+}
 
 int main() {
-	//delcare shared data
+	/* Declare shared data */
 	sharedData_t data;
 
-	//initialise shared data
+	/* Initialise shared data */
 	initData(&data);
 
-	//initialise threads
-	pthread_t genCall_t;
-	//pthread makeCall_t;
+	/* Initialise threads */
+	pthread_t guest_t;
+	//pthread waiter_t;
 
-	//create threads
-	pthread_create(&genCall_t, NULL, &generateCall, (void *)&data);
-	//pthread_create(&makeCall_,t NULL, &makeCall, (void *)&data);
+	/* Create threads */
+	pthread_create(&guest_t, NULL, &guest, (void *)&data);
+	//pthread_create(&waiter_t, NULL, &waiter, (void *)&data);
+	
+	/* Set up set information */
+	sigset_t set;
+	sigemptyset(&set);
+	//sigset(SIGINT, handler);
+	int sig;
 
-	//join threads
-	pthread_join(genCall_t, NULL);
-	//pthread_join(makeCall_t, NULL);
+	//sigwait(&set, &sig);
+	
+	//pthread_kill(guest_t, SIGINT);
+
+	/* Join Threads */
+	pthread_join(guest_t, NULL);
+	//pthread_join(waiter_t, NULL);
 }//main
