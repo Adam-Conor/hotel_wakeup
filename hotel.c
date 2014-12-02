@@ -15,7 +15,6 @@
 
 #define SLEEP 5
 #define MAXROOM 8000
-#define ARRAY_SIZE 1000 //STILL NEED TO DECIDE THIS
 
 /* define all structs */
 
@@ -25,11 +24,11 @@ typedef struct wakeupCall_t { //stuct for wake up time
 } wakeupCall_t;
 
 typedef struct Heap {
-	struct wakeupCall_t times[ARRAY_SIZE];
+	struct wakeupCall_t times[MAXROOM];
 	int numElements;
 } Heap;
 
-typedef struct { //struct for holding logs
+typedef struct logs_t { //struct for holding logs
 	int generated;
 	int pending;
 	int called;
@@ -38,7 +37,7 @@ typedef struct { //struct for holding logs
 
 typedef struct { //struct for holding shared data
 	logs_t log;
-	Heap *heap;
+	Heap heap;
 } sharedData_t;
 
 /* Heap methods */
@@ -70,9 +69,10 @@ void initHeap(Heap *harry) {
 	harry->numElements = 0;
 }
 
+
 void initData(sharedData_t *data) {
 	initLog(&data->log);
-	initNode(data->heap);
+	initHeap(&data->heap);
 }
 
 /* Random number generators */
@@ -139,9 +139,8 @@ static void * generateCall(void *data_in) {
 		wakeupCall_t call = newCall();
 		showCall(call);
 
-		//add the call to the heap
-		data->heap = addNode(data->heap, call);
-		showHeap(data->heap);
+		/* add the call to the heap */
+		addTime(&data->heap, call);
 
 		//log the new call
 		logNew(&data->log);
@@ -149,7 +148,7 @@ static void * generateCall(void *data_in) {
 	}
 }
 
-static void * makeCall(void *data_in) {
+/*static void * makeCall(void *data_in) {
 	sharedData_t *data = data_in;
 	sigset_t set;
 	int sig;
@@ -163,6 +162,7 @@ static void * makeCall(void *data_in) {
 		//log call made
 	}
 }
+*/
 
 int main() {
 	//delcare shared data
