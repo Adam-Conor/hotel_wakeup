@@ -171,7 +171,8 @@ static void showWakeUp(wakeupCall_t c) {
 }//show wake up call
 
 static void showLog(logs_t *log) {
-	printf("Expired Alarms: %d\nPending Alarms: %d\n\n", log->expired, log->pending);
+	printf("Expired Alarms: %d\nPending Alarms: %d\n\n", 
+		log->expired, log->pending);
 }//show the log
 
 /* log methods */
@@ -185,22 +186,23 @@ void logExpired(logs_t *log) {
 	log->pending--;
 }//log an expired call
 
-void cleanupLog(logs_t *log) {
-	log->pending = 0;
+void cleanupLog(logs_t log) {
+	log.pending = 0;
 }
 
 /* Cleanup methods */
 
 static void * guest_cleanup(void *data_in) {
 	printf("\nThe guest thread is cleaning up...\n");
+	sharedData_t *data = data_in;
+	cleanupLog(data->log);
 	printf("The guest thread says goodbye.\n");
 }//cleanup guest thread
 
 static void * waiter_cleanup(void *data_in) {
 	printf("The waiter thread is cleaning up...\n");
 	sharedData_t *data = data_in;
-	//free(data->heap.times);
-	cleanupLog(&data->log);
+	cleanupLog(data->log);
 	printf("The waiter  thread says goodbye.\n");
 }//cleanup waiter thread
 
@@ -216,11 +218,11 @@ static void * guest(void *data_in) {
 	int sig;
 
 	while(1) {
-		/* Generate a call */
-		wakeupCall_t call = newCall();
-
 		/* Protect data */
 		pthread_mutex_lock(&data->mutex);
+
+		/* Generate a call */
+		wakeupCall_t call = newCall();
 
 		/* Show call being generated */
 		showCall(call);
@@ -286,9 +288,6 @@ static void * waiter(void *data_in) {
 			/* Show pending and expired alarms */
 			showLog(&data->log);
 		}
-
-		/* Signal guest thread */
-		pthread_cond_signal(&data->cond);
 
 		/* Release shared data */
 		pthread_mutex_unlock(&data->mutex);
