@@ -68,6 +68,7 @@ void showHeap(Heap james){
 
 void removePriorty(Heap *heap){
 	wakeupCall_t min = heap->times[1];
+	printf("Wakeup ya cunt:\t%04d %s\n\n\n", heap->times[1].roomNumber, ctime(&heap->times[1].callTime));
 	heap->times[1] = heap->times[heap->numElements--];
 	fixHeap(heap, 1);
 }
