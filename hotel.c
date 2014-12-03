@@ -27,7 +27,7 @@ typedef struct wakeupCall_t { //stuct for wake up time
 	time_t callTime;
 } wakeupCall_t;
 
-typedef struct Heap {
+typedef struct Heap { //struct for the heap
 	struct wakeupCall_t times[ARRAY_SIZE];
 	int numElements;
 } Heap;
@@ -46,7 +46,7 @@ typedef struct { //struct for holding shared data
 
 /* Heap methods */
 
-void addTime(Heap *heap, wakeupCall_t c) { //add element to heap
+void addTime(Heap *heap, wakeupCall_t c) {
 	heap->numElements++;
 
 	/* resize array if too big */
@@ -65,12 +65,13 @@ void addTime(Heap *heap, wakeupCall_t c) { //add element to heap
 	}
 
 	heap->times[current] = c;
-}
+}//add an element to the heap
 
-void fixHeap(Heap *heap, int root){
+void fixHeap(Heap *heap, int root) {
 	int childNode;
 	wakeupCall_t tmp = heap->times[root];
-	for(; root * 2 <= heap->numElements ; root = childNode){
+
+	for(; root * 2 <= heap->numElements ; root = childNode) {
 		childNode = root * 2;
 
 		if(childNode != heap->numElements && heap->times[childNode + 1].callTime < heap->times[childNode].callTime) {
@@ -85,20 +86,13 @@ void fixHeap(Heap *heap, int root){
 	}
 
 	heap->times[root] = tmp;
-}
+}//fix the heap
 
-void removePriorty(Heap *heap){
+void removePriorty(Heap *heap) {
 	wakeupCall_t min = heap->times[1];
 	heap->times[1] = heap->times[heap->numElements--];
 	fixHeap(heap, 1);
-}
-
-void showHeap(Heap james) {
-	int i;
-	for(i = 1; i < james.numElements; i++) {
-		printf("%s\n", ctime(&james.times[i].callTime));
-	}
-}
+}//remove the first item
 
 /* Initialisation methods */
 
@@ -184,26 +178,44 @@ static void showLog(logs_t *log) {
 
 void logNew(logs_t *log) {
 	log->pending++;
-} //log a pending call
+}//log a pending call
 
 void logExpired(logs_t *log) {
 	log->expired++;
 	log->pending--;
-} //log an expired call
+}//log an expired call
+
+void cleanupLog(logs_t *log) {
+	log->pending = 0;
+}
+
+/* Cleanup methods */
+
+static void * guest_cleanup(void *data_in) {
+	printf("\nThe guest thread is cleaning up...\n");
+	printf("The guest thread says goodbye.\n");
+}//cleanup guest thread
+
+static void * waiter_cleanup(void *data_in) {
+	printf("The waiter thread is cleaning up...\n");
+	sharedData_t *data = data_in;
+	//free(data->heap.times);
+	cleanupLog(&data->log);
+	printf("The waiter  thread says goodbye.\n");
+}//cleanup waiter thread
 
 /* Guest generates random wake up times */
-
 static void * guest(void *data_in) {
 	/* Take in shared data */
 	sharedData_t *data = data_in;
+
+	/* Install a cleanup handler */
+	pthread_cleanup_push(guest_cleanup, &data->mutex);
 
 	/* Set up signal information */
 	int sig;
 
 	while(1) {
-		/* Sleep for random time */
-		//randomSleep();
-
 		/* Generate a call */
 		wakeupCall_t call = newCall();
 
@@ -219,37 +231,45 @@ static void * guest(void *data_in) {
 		/* Log new call */
 		logNew(&data->log);
 
+		/* Signal waiter thread */
 		if(call.callTime == data->heap.times[1].callTime) {
 			pthread_cond_signal(&data->cond);
 		}
 
+		/* Release shared data */
 		pthread_mutex_unlock(&data->mutex);
 
+		/* Sleep for random seconds */
 		randomSleep();
 	}
 
-	pthread_exit((void*) 0);
+	/* Cleanup and exit thread */
+	pthread_cleanup_pop(0);
+	pthread_exit(NULL);
 }
 
+/* Makes wakeup call at time */
 static void * waiter(void *data_in) {
 	/* Take in shared data */
 	sharedData_t *data = data_in;
 
-	/* Set up signal information */
-	sigset_t set;
-	int sig;
+	/* Install cleanup handler */
+	pthread_cleanup_push(waiter_cleanup, &data->mutex);
 
 	/* Wait for time */
 	while(1) {
+		/* Protect shared data */
 		pthread_mutex_lock(&data->mutex);
-		pthread_cond_wait(&data->cond, &data->mutex);
 
+		while(&data->heap.times[1] == NULL) {
+			pthread_cond_wait(&data->cond, &data->mutex);
+		}
+
+		/* Set up wait */
 		struct timespec ts; 
 
 		ts.tv_sec = data->heap.times[1].callTime;
 		ts.tv_nsec = 0;
-
-		printf("%s\n", ctime(&data->heap.times[1].callTime));
 
 		int timeOut = pthread_cond_timedwait(&data->cond, &data->mutex, &ts);
 
@@ -267,19 +287,17 @@ static void * waiter(void *data_in) {
 			showLog(&data->log);
 		}
 
-			/* Signal guest thread */
-			pthread_cond_signal(&data->cond);
+		/* Signal guest thread */
+		pthread_cond_signal(&data->cond);
 
-			/* Release shared data */
-			pthread_mutex_unlock(&data->mutex);
+		/* Release shared data */
+		pthread_mutex_unlock(&data->mutex);
 
 	}
 
-	pthread_exit((void*) 0);
-}
-
-static void handler(int signo) {
-	printf("SIGINT recieved. Cancelling threads");
+	/* Cleanup and exit thread */
+	pthread_cleanup_pop(0);
+	pthread_exit(NULL);
 }
 
 int main() {
@@ -299,15 +317,28 @@ int main() {
 
 	/* Set up signal information */
 	sigset_t set;
-	sigemptyset(&set);
-	//sigset(SIGINT, handler);
+	sigaddset(&set, SIGINT);
+	sigprocmask(SIG_BLOCK, &set, NULL);
 	int sig;
 
-	//sigwait(&set, &sig);
+	/* Wait for SIGINT */
+	sigwait(&set, &sig);
 
-	//pthread_kill(guest_t, SIGINT);
+	/* Cancel the threads */
+	pthread_cancel(guest_t);
+	pthread_cancel(waiter_t);
 
 	/* Wait for threads to finish */
 	pthread_join(guest_t, NULL);
-	//pthread_join(waiter_t, NULL);
+	pthread_join(waiter_t, NULL);
+
+	/* Cleanup mutex and condition varibale */
+
+	pthread_mutex_destroy(&data.mutex);
+	pthread_cond_destroy(&data.cond);
+
+	/* Show pending alarms */
+	printf("Pending: %d\n", data.log.pending);
+
+	return 0;
 }//main
