@@ -14,7 +14,7 @@
 /* Declare constants */
 
 #define SLEEP 5
-#define MAXROOM 8000
+#define MAXROOM 8000 
 
 /* define all structs */
 
@@ -45,9 +45,12 @@ typedef struct { //struct for holding shared data
 void addTime(Heap *heap, wakeupCall_t c) {
 	heap->numElements++;
 	heap->times[heap->numElements] = c;
-
 	int current = heap->numElements;
-
+	//if(heap->numElements == MAXROOM-1){
+	//	resizeHeap(c);
+	//	printf("Resizing array");
+	//}
+			
 	while(heap->times[current / 2].callTime > c.callTime) {
 		heap->times[current] = heap->times[current / 2];
 		current /= 2;
@@ -55,6 +58,24 @@ void addTime(Heap *heap, wakeupCall_t c) {
 
 	heap->times[current] = c;
 }
+	
+void showHeap(Heap james){
+	int i;
+	for(i = 1; i < james.numElements; i++){
+		printf("%s\n", ctime(&james.times[i].callTime));
+	}
+
+}
+
+
+//void resizeHeap(wakeupCall_t *c[]){
+//	void *tmp = (wakeupCall_t *)realloc(c, MAXROOM*2);
+//	printf("IN MEHOD :)");
+//	//void *_tmp = realloc(the_array, (num_allocated * sizeof(DATA)));
+//	c = tmp;	
+//}
+
+
 
 /* Initialisation methods */
 
@@ -115,11 +136,16 @@ static wakeupCall_t newCall() {
 	return c;
 }//generate a new wake up call
 
-static void showCall(wakeupCall_t c) {
+static void showCall(wakeupCall_t c) 
+{
 	//needs to add to data structure
 	printf("Registering:\t%04d %s\n", c.roomNumber, ctime(&c.callTime));
 }
 
+static void showWakeup(wakeupCall_t c){
+	printf("Wakeup ya cunt:\t%04d %s\n", c.roomNumber, ctime(&c.callTime));
+}
+	
 /* log methods */
 
 void logNew(logs_t *log) {
@@ -128,32 +154,31 @@ void logNew(logs_t *log) {
 
 /* at the moment just generates random wake up calls at random times */
 
-static void * generateCall(void *data_in) {
+static void * guest(void *data_in) {
 	sharedData_t *data = data_in;
 
 	while(1) {
 		//sleep for random seconds
 		randomSleep();
-
 		//generate a wake up call
 		wakeupCall_t call = newCall();
 		showCall(call);
 
 		/* add the call to the heap */
 		addTime(&data->heap, call);
-
+		showHeap(data->heap);
 		//log the new call
 		logNew(&data->log);
 		printf("%d\n", data->log.generated);
 	}
 }
 
-/*static void * makeCall(void *data_in) {
+/*static void * waiter(void *data_in) {
 	sharedData_t *data = data_in;
 	sigset_t set;
 	int sig;
 
-	while(sig != SIGINT) {
+	while(pthread_cond_timedwait() = ) {
 		//if no data wait
 		//get top of heap
 		//remove top of heap
@@ -161,8 +186,8 @@ static void * generateCall(void *data_in) {
 		//make call(message)
 		//log call made
 	}
-}
-*/
+}*/
+
 
 int main() {
 	//delcare shared data
@@ -172,14 +197,14 @@ int main() {
 	initData(&data);
 
 	//initialise threads
-	pthread_t genCall_t;
-	//pthread makeCall_t;
+	pthread_t guest_t;
+	//pthread waiter_t;
 
 	//create threads
-	pthread_create(&genCall_t, NULL, &generateCall, (void *)&data);
-	//pthread_create(&makeCall_,t NULL, &makeCall, (void *)&data);
+	pthread_create(&guest_t, NULL, &guest, (void *)&data);
+	//pthread_create(&waiter_t, NULL, &waiter, (void *)&data);
 
 	//join threads
-	pthread_join(genCall_t, NULL);
-	//pthread_join(makeCall_t, NULL);
+	pthread_join(guest_t, NULL);
+	//pthread_join(waiter_t, NULL);
 }//main
