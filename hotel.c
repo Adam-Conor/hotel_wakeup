@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <time.h>
 
 /* Declare constants */
 
@@ -17,6 +18,7 @@
 #define LATEST_TIME 100
 #define MAXROOM 8000
 #define ARRAY_SIZE 1000
+#define ETIMEDOUT 110
 
 /* Define structs */
 
@@ -46,12 +48,12 @@ typedef struct { //struct for holding shared data
 
 void addTime(Heap *heap, wakeupCall_t c) { //add element to heap
 	heap->numElements++;
-	
+
 	/* resize array if too big */
 	/*if(heap->numElements > ARRAY_SIZE) {
 		resizeArray(heap);
-	}
-	*/
+		}
+	 */
 
 	heap->times[heap->numElements] = c;
 
@@ -65,31 +67,30 @@ void addTime(Heap *heap, wakeupCall_t c) { //add element to heap
 	heap->times[current] = c;
 }
 
-wakeupCall_t removeFirst(Heap *heap) {
-	wakeupCall_t first;
-	wakeupCall_t last;
-	int child;
-	int current;
+void fixHeap(Heap *heap, int root){
+	int childNode;
+	wakeupCall_t tmp = heap->times[root];
+	for(; root * 2 <= heap->numElements ; root = childNode){
+		childNode = root * 2;
 
-	first = heap->times[1];
-	last = heap->times[heap->numElements--];
-
-	for(current = 1; (current * 2) <= heap->numElements; current = child) {
-		child = current * 2;
-
-		if(child != heap->numElements && (heap->times[child + 1].callTime < heap->times[child].callTime)) {
-			child++;
+		if(childNode != heap->numElements && heap->times[childNode + 1].callTime < heap->times[childNode].callTime) {
+			childNode++;
 		}
 
-		if(last.callTime > heap->times[child].callTime) {
-			heap->times[current].callTime = heap->times[child].callTime;
+		if(heap->times[childNode].callTime < tmp.callTime) {
+			heap->times[root] = heap->times[childNode];
 		} else {
 			break;
 		}
 	}
 
-	heap->times[current].callTime = last.callTime;
-	return first;
+	heap->times[root] = tmp;
+}
+
+void removePriorty(Heap *heap){
+	wakeupCall_t min = heap->times[1];
+	heap->times[1] = heap->times[heap->numElements--];
+	fixHeap(heap, 1);
 }
 
 void showHeap(Heap james) {
@@ -176,7 +177,7 @@ static void showWakeUp(wakeupCall_t c) {
 }//show wake up call
 
 static void showLog(logs_t *log) {
-	printf("Expired Alarms: %d\nPending Alarms: %d\n", log->expired, log->pending);
+	printf("Expired Alarms: %d\nPending Alarms: %d\n\n", log->expired, log->pending);
 }//show the log
 
 /* log methods */
@@ -199,16 +200,18 @@ static void * guest(void *data_in) {
 	/* Set up signal information */
 	int sig;
 
-	while(sig != SIGINT) {
+	while(1) {
 		/* Sleep for random time */
-		randomSleep();
+		//randomSleep();
 
-		/* Generate and show wake up call */
+		/* Generate a call */
 		wakeupCall_t call = newCall();
-		showCall(call);
 
-		/* */
+		/* Protect data */
 		pthread_mutex_lock(&data->mutex);
+
+		/* Show call being generated */
+		showCall(call);
 
 		/* add the call to the heap */
 		addTime(&data->heap, call);
@@ -216,35 +219,17 @@ static void * guest(void *data_in) {
 		/* Log new call */
 		logNew(&data->log);
 
+		if(call.callTime == data->heap.times[1].callTime) {
+			pthread_cond_signal(&data->cond);
+		}
+
 		pthread_mutex_unlock(&data->mutex);
 
-		while(time(NULL) >= data->heap.times[1].callTime) {
-			pthread_cond_signal(&data->cond);
-			pthread_cond_wait(&data->cond, &data->mutex);
-		}
+		randomSleep();
 	}
+
+	pthread_exit((void*) 0);
 }
-
-//int pthread_mutex_init(pthread_mutex_t *mutex,const pthread_mutexattr_t *attr);
-//int pthread_mutex_lock(pthread_mutex_t *mutex);
-//int pthread_mutex_unlock(pthread_mutex_t *mutex);
-//int pthread_mutex_destroy(pthread_mutex_t *mutex);
-
-//void *foo(void *p) {
-//pthread_mutex_lock(&mutex);
-///* Update p */
-//pthread_mutex_unlock(&mutex);
-//return (NULL);
-//}
-//
-//int pthread_cond_init(pthread_cond_t *cond,
-//const pthread_condattr_t *attr);
-//int pthread_cond_destroy(pthread_cond_t *cond);
-//int pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex);
-//int pthread_cond_timedwait(pthread_cond_t *cond,pthread_mutex_t *mutex,
-//const struct timespec *abstime);
-//int pthread_cond_broadcast(pthread_cond_t *cond);
-//int pthread_cond_signal(pthread_cond_t *cond);
 
 static void * waiter(void *data_in) {
 	/* Take in shared data */
@@ -254,33 +239,43 @@ static void * waiter(void *data_in) {
 	sigset_t set;
 	int sig;
 
-	while(sig != SIGINT) {
-		/* Wait for time */
-		while(time(NULL) < data->heap.times[1].callTime && time(NULL) > 0) {
-			pthread_cond_wait(&data->cond, &data->mutex);
-		}
-		
-		/* Protect shared data */
+	/* Wait for time */
+	while(1) {
 		pthread_mutex_lock(&data->mutex);
-		
-		/* Show wake up call */
-		showWakeUp(data->heap.times[1]);
+		pthread_cond_wait(&data->cond, &data->mutex);
 
-		/* Remove from heap */
-		//removeFirst(&data->heap.times);
+		struct timespec ts; 
 
-		/* Log expired call */
-		logExpired(&data->log);
-		
-		/* Show pending and expired alarms */
-		showLog(&data->log);
+		ts.tv_sec = data->heap.times[1].callTime;
+		ts.tv_nsec = 0;
 
-		/* Signal guest thread */
-		pthread_cond_signal(&data->cond);
+		printf("%s\n", ctime(&data->heap.times[1].callTime));
 
-		/* Release shared data */
-		pthread_mutex_unlock(&data->mutex);
+		int timeOut = pthread_cond_timedwait(&data->cond, &data->mutex, &ts);
+
+		if(timeOut == ETIMEDOUT) {
+			/* Show wake up call */
+			showWakeUp(data->heap.times[1]);
+
+			/* Remove from heap */
+			removePriorty(&data->heap);
+
+			/* Log expired call */
+			logExpired(&data->log);
+
+			/* Show pending and expired alarms */
+			showLog(&data->log);
+		}
+
+			/* Signal guest thread */
+			pthread_cond_signal(&data->cond);
+
+			/* Release shared data */
+			pthread_mutex_unlock(&data->mutex);
+
 	}
+
+	pthread_exit((void*) 0);
 }
 
 static void handler(int signo) {
@@ -301,7 +296,7 @@ int main() {
 	/* Create threads */
 	pthread_create(&guest_t, NULL, &guest, (void *)&data);
 	pthread_create(&waiter_t, NULL, &waiter, (void *)&data);
-	
+
 	/* Set up signal information */
 	sigset_t set;
 	sigemptyset(&set);
@@ -309,7 +304,7 @@ int main() {
 	int sig;
 
 	//sigwait(&set, &sig);
-	
+
 	//pthread_kill(guest_t, SIGINT);
 
 	/* Wait for threads to finish */
