@@ -31,32 +31,18 @@ typedef struct Heap {
 } Heap;
 
 typedef struct logs_t { //struct for holding logs
-	int generated;
 	int pending;
-	int called;
 	int expired;
 } logs_t;
 
 typedef struct { //struct for holding shared data
 	logs_t log;
 	Heap heap;
-	pthread_mutex_t m;
-	pthread_cond_t cv;
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
 } sharedData_t;
 
 /* Heap methods */
-
-/*struct wakeupCall_t resizeArray(Heap *heap) {
-	struct wakeupCall_t temp[ARRAY_SIZE * 2];
-	int i;
-	for(i = 0; i < ARRAY_SIZE; i++) {
-		temp[i] = heap->times[i];
-	}
-
-	//heap->times = ptr;
-	return temp;
-}
-*/
 
 void addTime(Heap *heap, wakeupCall_t c) { //add element to heap
 	heap->numElements++;
@@ -116,30 +102,28 @@ void showHeap(Heap james) {
 /* Initialisation methods */
 
 void initLog(logs_t *log) {
-	log->generated = 0;
 	log->pending = 0;
-	log->called = 0;
 	log->expired = 0;
-}
+}//initialise the logs
 
 void initHeap(Heap *harry) {
 	harry->numElements = 0;
-}
+}//initialise the heap
 
 void initMutex(pthread_mutex_t *tom) {
 	pthread_mutex_init(tom, NULL);
-}
+}//initialise the mutex
 
-void initCV(pthread_cond_t *cv) {
-	cv = PTHREAD_COND_INITIALIZER;
-}
+void initCond(pthread_cond_t *cond) {
+	pthread_cond_init(cond, NULL);
+}//initialise the cond variable
 
 void initData(sharedData_t *data) {
 	initLog(&data->log);
-	initMutex(&data->m);
-	initCV(&data->cv);
+	initMutex(&data->mutex);
+	initCond(&data->cond);
 	initHeap(&data->heap);
-}
+}//initialise the shared data
 
 /* Random number generators */
 
@@ -181,24 +165,38 @@ static wakeupCall_t newCall() {
 	return c;
 }//generate a random call
 
+/* Print methods */
+
 static void showCall(wakeupCall_t c) {
 	printf("Registering:\t%4d %s\n", c.roomNumber, ctime(&c.callTime));
-}//show a call
+}//show registered call
 
 static void showWakeUp(wakeupCall_t c) {
 	printf("Wake Up:\t%4d %s\n", c.roomNumber, ctime(&c.callTime));
-}//show a wake up
+}//show wake up call
+
+static void showLog(logs_t *log) {
+	printf("Expired Alarms: %d\nPending Alarms: %d\n", log->expired, log->pending);
+}//show the log
 
 /* log methods */
 
 void logNew(logs_t *log) {
-	log->generated++;
 	log->pending++;
-}//Log new call
+} //log a pending call
 
-/* at the moment just generates random wake up calls at random times */
+void logExpired(logs_t *log) {
+	log->expired++;
+	log->pending--;
+} //log an expired call
+
+/* Guest generates random wake up times */
+
 static void * guest(void *data_in) {
+	/* Take in shared data */
 	sharedData_t *data = data_in;
+
+	/* Set up signal information */
 	int sig;
 
 	while(sig != SIGINT) {
@@ -209,29 +207,79 @@ static void * guest(void *data_in) {
 		wakeupCall_t call = newCall();
 		showCall(call);
 
+		/* */
+		pthread_mutex_lock(&data->mutex);
+
 		/* add the call to the heap */
 		addTime(&data->heap, call);
 
 		/* Log new call */
 		logNew(&data->log);
+
+		pthread_mutex_unlock(&data->mutex);
+
+		while(time(NULL) >= data->heap.times[1].callTime) {
+			pthread_cond_signal(&data->cond);
+			pthread_cond_wait(&data->cond, &data->mutex);
+		}
 	}
 }
 
+//int pthread_mutex_init(pthread_mutex_t *mutex,const pthread_mutexattr_t *attr);
+//int pthread_mutex_lock(pthread_mutex_t *mutex);
+//int pthread_mutex_unlock(pthread_mutex_t *mutex);
+//int pthread_mutex_destroy(pthread_mutex_t *mutex);
+
+//void *foo(void *p) {
+//pthread_mutex_lock(&mutex);
+///* Update p */
+//pthread_mutex_unlock(&mutex);
+//return (NULL);
+//}
+//
+//int pthread_cond_init(pthread_cond_t *cond,
+//const pthread_condattr_t *attr);
+//int pthread_cond_destroy(pthread_cond_t *cond);
+//int pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex);
+//int pthread_cond_timedwait(pthread_cond_t *cond,pthread_mutex_t *mutex,
+//const struct timespec *abstime);
+//int pthread_cond_broadcast(pthread_cond_t *cond);
+//int pthread_cond_signal(pthread_cond_t *cond);
+
 static void * waiter(void *data_in) {
+	/* Take in shared data */
 	sharedData_t *data = data_in;
+
+	/* Set up signal information */
 	sigset_t set;
 	int sig;
 
 	while(sig != SIGINT) {
-		while(1) {
-			pthread_cond_wait
+		/* Wait for time */
+		while(time(NULL) < data->heap.times[1].callTime && time(NULL) > 0) {
+			pthread_cond_wait(&data->cond, &data->mutex);
 		}
-		//if no data wait
-		//get top of heap
-		//remove top of heap
-		//if data available sleep until time
-		//make call(message)
-		//log call made
+		
+		/* Protect shared data */
+		pthread_mutex_lock(&data->mutex);
+		
+		/* Show wake up call */
+		showWakeUp(data->heap.times[1]);
+
+		/* Remove from heap */
+		//removeFirst(&data->heap.times);
+
+		/* Log expired call */
+		logExpired(&data->log);
+		
+		/* Show pending and expired alarms */
+		showLog(&data->log);
+
+		/* Signal guest thread */
+		pthread_cond_signal(&data->cond);
+
+		/* Release shared data */
+		pthread_mutex_unlock(&data->mutex);
 	}
 }
 
@@ -248,13 +296,13 @@ int main() {
 
 	/* Initialise threads */
 	pthread_t guest_t;
-	//pthread waiter_t;
+	pthread_t waiter_t;
 
 	/* Create threads */
 	pthread_create(&guest_t, NULL, &guest, (void *)&data);
-	//pthread_create(&waiter_t, NULL, &waiter, (void *)&data);
+	pthread_create(&waiter_t, NULL, &waiter, (void *)&data);
 	
-	/* Set up set information */
+	/* Set up signal information */
 	sigset_t set;
 	sigemptyset(&set);
 	//sigset(SIGINT, handler);
@@ -264,7 +312,7 @@ int main() {
 	
 	//pthread_kill(guest_t, SIGINT);
 
-	/* Join Threads */
+	/* Wait for threads to finish */
 	pthread_join(guest_t, NULL);
 	//pthread_join(waiter_t, NULL);
 }//main
