@@ -64,10 +64,28 @@ void showHeap(Heap james){
 	for(i = 1; i < james.numElements; i++){
 		printf("%s\n", ctime(&james.times[i].callTime));
 	}
-
 }
 
+void removePriorty(Heap *heap){
+	wakeupCall_t min = heap->times[1];
+	heap->times[1] = heap->times[heap->numElements--];
+	fixHeap(heap, 1);
+}
 
+void fixHeap(Heap *heap, int root){
+	int childNode;
+	wakeupCall_t tmp = heap->times[root];
+	for(; root * 2 <= heap->numElements ; root = childNode){
+		childNode = root * 2;
+		if(childNode != heap->numElements && heap->times[childNode + 1].callTime < heap->times[childNode].callTime)
+			childNode++;
+		if(heap->times[childNode].callTime < tmp.callTime)
+			heap->times[root] = heap->times[childNode];
+		else break;	
+	}
+	heap->times[root] = tmp;
+	//printf("Wakeup ya cunt:\t%04d %s\n", heap->times[root].roomNumber, ctime(&heap->times[root].callTime));
+}	
 //void resizeHeap(wakeupCall_t *c[]){
 //	void *tmp = (wakeupCall_t *)realloc(c, MAXROOM*2);
 //	printf("IN MEHOD :)");
@@ -156,9 +174,9 @@ void logNew(logs_t *log) {
 
 static void * guest(void *data_in) {
 	sharedData_t *data = data_in;
-
+	int count = 0;
 	while(1) {
-		//sleep for random seconds
+		//sleep for random second
 		randomSleep();
 		//generate a wake up call
 		wakeupCall_t call = newCall();
@@ -167,9 +185,15 @@ static void * guest(void *data_in) {
 		/* add the call to the heap */
 		addTime(&data->heap, call);
 		showHeap(data->heap);
+		if(count == 3){
+			printf("Removing a node");
+			removePriorty(&data->heap);
+			count = 0;
+		}
 		//log the new call
 		logNew(&data->log);
 		printf("%d\n", data->log.generated);
+		count++;
 	}
 }
 
