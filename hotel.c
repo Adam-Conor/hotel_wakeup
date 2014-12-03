@@ -15,6 +15,7 @@
 
 #define SLEEP 5
 #define MAXROOM 8000 
+#define ARRAY_SIZE 5
 
 /* define all structs */
 
@@ -24,7 +25,7 @@ typedef struct wakeupCall_t { //stuct for wake up time
 } wakeupCall_t;
 
 typedef struct Heap {
-	struct wakeupCall_t times[MAXROOM];
+	struct wakeupCall_t times[ARRAY_SIZE];
 	int numElements;
 } Heap;
 
@@ -46,10 +47,10 @@ void addTime(Heap *heap, wakeupCall_t c) {
 	heap->numElements++;
 	heap->times[heap->numElements] = c;
 	int current = heap->numElements;
-	//if(heap->numElements == MAXROOM-1){
-	//	resizeHeap(c);
-	//	printf("Resizing array");
-	//}
+	if(current == 1){
+		resizeHeap(heap->times);
+		printf("Resizing array");
+	}
 			
 	while(heap->times[current / 2].callTime > c.callTime) {
 		heap->times[current] = heap->times[current / 2];
@@ -87,12 +88,12 @@ void fixHeap(Heap *heap, int root){
 	heap->times[root] = tmp;
 	//printf("Wakeup ya cunt:\t%04d %s\n", heap->times[root].roomNumber, ctime(&heap->times[root].callTime));
 }	
-//void resizeHeap(wakeupCall_t *c[]){
-//	void *tmp = (wakeupCall_t *)realloc(c, MAXROOM*2);
-//	printf("IN MEHOD :)");
-//	//void *_tmp = realloc(the_array, (num_allocated * sizeof(DATA)));
-//	c = tmp;	
-//}
+void resizeHeap(wakeupCall_t c[]){
+	wakeupCall_t tmp[] = (wakeupCall_t)realloc(c, ARRAY_SIZE * sizeof(c) );
+	printf("IN MEtHOD :)");
+	//void *_tmp = realloc(c, ( * sizeof(DATA)));
+	c = tmp;	
+}
 
 
 
@@ -186,11 +187,11 @@ static void * guest(void *data_in) {
 		/* add the call to the heap */
 		addTime(&data->heap, call);
 		showHeap(data->heap);
-		if(count == 3){
+		/*if(count == 3){
 			printf("Removing a node");
 			removePriorty(&data->heap);
 			count = 0;
-		}
+		}*/
 		//log the new call
 		logNew(&data->log);
 		printf("%d\n", data->log.generated);
