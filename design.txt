@@ -2,4 +2,56 @@ Conor Smyth 12452382
 Adam O'Flynn 12378651
 All work is our own
 
-File to describe how our solution functions
+Random sleep time 0-5
+Maximum room 8000
+Start size of the heap
+
+wakeupCall_t struct holds a room number and time
+Heap struct has a wakeupCall_t array, size and elements counter
+logs_t struct has pending and expired integers
+sharedData_t holds a log and heap struct and a mutex and condition variable
+
+Upon reaching size limit heap doubles in size
+
+Random number generators generate random sleeps, times and rooms
+
+Main:
+1) Initialises the shared data and threads
+2) Creates the guest and waiter threads
+3) Starts the guest and waiter threads
+4) Sets up signal and signal mask
+5) Waits for SIGINT
+6) Upon receiving a SIGINT cancels guest and waiter threads
+7) Waits for guest and waiter threads to finish
+8) Destroys the mutex and condition variable
+9) Prints out the number of pending alarms
+10) Exits program
+
+Guest Thread:
+1) Takes in shared data from parameter
+2) Installs a cleanup handler
+3) Locks the mutex to protect data
+4) Generates a random room and wake up call time
+5) Shows the room and call time being registered
+6) Adds the time to the heap
+7) Logs the new call
+8) Checks if it is time for a call
+	8.1) If it is the time signals waiter thread
+9) Unlocks the mutex
+10) Sleeps for a random number of seconds
+11) When cancelled goes to cleanup handler
+
+Waiter Thread:
+1) Takes in shared data from parameter
+2) Installs a cleanup handler
+3) Locks the mutex to protect data
+4) Check if the heap is empty
+	4.1) If it is the threads waits
+5) Sets up the wait time from top of heap
+6) Check if time has arrived
+	6.1) If the time has arrived it shows the room and call time
+	6.2) Removes the item from the top of the heap
+	6.3) Logs that the call has been made
+	6.4) Shows the log
+7) Unlocks the mutex
+8) When cancelled goes to cleanup handler
