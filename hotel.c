@@ -18,14 +18,11 @@
 /* Declare constants */
 
 #define SLEEP 5
-<<<<<<< HEAD
 #define LATEST_TIME 100
 #define MAXROOM 8000
 #define HEAP_SIZE 5
 #define ETIMEDOUT 110
-=======
 #define MAXROOM 8000 
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 
 /* Define structs */
 
@@ -70,16 +67,9 @@ void addTime(Heap *heap, wakeupCall_t c) {
 
 	/* Add element to end of heap */
 	heap->times[heap->numElements] = c;
-<<<<<<< HEAD
 
 	/* Fix up heap */
-=======
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 	int current = heap->numElements;
-	//if(heap->numElements == MAXROOM-1){
-	//	resizeHeap(c);
-	//	printf("Resizing array");
-	//}
 			
 	while(heap->times[current / 2].callTime > c.callTime) {
 		heap->times[current] = heap->times[current / 2];
@@ -87,7 +77,6 @@ void addTime(Heap *heap, wakeupCall_t c) {
 	}
 
 	heap->times[current] = c;
-<<<<<<< HEAD
 }//add an element to the heap
 
 void fixHeap(Heap *heap, int root) {
@@ -115,27 +104,6 @@ void removePriorty(Heap *heap) {
 	heap->times[1] = heap->times[heap->numElements--];
 	fixHeap(heap, 1);
 }//remove the first item
-=======
-}
-	
-void showHeap(Heap james){
-	int i;
-	for(i = 1; i < james.numElements; i++){
-		printf("%s\n", ctime(&james.times[i].callTime));
-	}
-
-}
-
-
-//void resizeHeap(wakeupCall_t *c[]){
-//	void *tmp = (wakeupCall_t *)realloc(c, MAXROOM*2);
-//	printf("IN MEHOD :)");
-//	//void *_tmp = realloc(the_array, (num_allocated * sizeof(DATA)));
-//	c = tmp;	
-//}
-
-
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 
 /* Initialisation methods */
 
@@ -207,7 +175,6 @@ static wakeupCall_t newCall() {
 
 /* Print methods */
 
-<<<<<<< HEAD
 static void showCall(wakeupCall_t c) {
 	printf("Registering:\t%4d %s\n", c.roomNumber, ctime(&c.callTime));
 }//show registered call
@@ -220,13 +187,6 @@ static void showLog(logs_t *log) {
 	printf("Expired Alarms: %d\nPending Alarms: %d\n\n", 
 			log->expired, log->pending);
 }//show the log
-=======
-static void showCall(wakeupCall_t c) 
-{
-	//needs to add to data structure
-	printf("Registering:\t%04d %s\n", c.roomNumber, ctime(&c.callTime));
-}
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 
 static void showWakeup(wakeupCall_t c){
 	printf("Wakeup ya cunt:\t%04d %s\n", c.roomNumber, ctime(&c.callTime));
@@ -243,7 +203,6 @@ void logExpired(logs_t *log) {
 	log->pending--;
 }//log an expired call
 
-<<<<<<< HEAD
 static void cleanupLog(logs_t *log) {
 	log->pending = 0;
 }//set pending back to 0
@@ -257,9 +216,6 @@ static void * guest_cleanup(void *data_in) {
 
 static void * waiter_cleanup(void *data_in) {
 	printf("The waiter thread is cleaning up...\n");
-=======
-static void * guest(void *data_in) {
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 	sharedData_t *data = data_in;
 	cleanupLog(&data->log);
 	pthread_mutex_unlock(&data->mutex);
@@ -278,16 +234,10 @@ static void * guest(void *data_in) {
 	int sig;
 
 	while(1) {
-<<<<<<< HEAD
 		/* Protect data */
 		pthread_mutex_lock(&data->mutex);
 
 		/* Generate a call */
-=======
-		//sleep for random seconds
-		randomSleep();
-		//generate a wake up call
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 		wakeupCall_t call = newCall();
 
 		/* Show call being generated */
@@ -295,13 +245,8 @@ static void * guest(void *data_in) {
 
 		/* add the call to the heap */
 		addTime(&data->heap, call);
-<<<<<<< HEAD
 
 		/* Log new call */
-=======
-		showHeap(data->heap);
-		//log the new call
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 		logNew(&data->log);
 		//showLog(&data->log);
 
@@ -314,8 +259,7 @@ static void * guest(void *data_in) {
 		pthread_mutex_unlock(&data->mutex);
 
 		/* Sleep for random seconds */
-		//randomSleep();
-		sleep(1);
+		randomSleep();
 	}
 
 	/* Cleanup and exit thread */
@@ -323,16 +267,11 @@ static void * guest(void *data_in) {
 	pthread_exit(NULL);
 }
 
-<<<<<<< HEAD
 /* Makes wakeup call at time */
 static void * waiter(void *data_in) {
 	/* Take in shared data */
-=======
-/*static void * waiter(void *data_in) {
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 	sharedData_t *data = data_in;
 
-<<<<<<< HEAD
 	/* Install cleanup handler */
 	pthread_cleanup_push(waiter_cleanup, &data->mutex);
 
@@ -376,18 +315,6 @@ static void * waiter(void *data_in) {
 	pthread_cleanup_pop(0);
 	pthread_exit(NULL);
 }
-=======
-	while(pthread_cond_timedwait() = ) {
-		//if no data wait
-		//get top of heap
-		//remove top of heap
-		//if data available sleep until time
-		//make call(message)
-		//log call made
-	}
-}*/
-
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 
 int main() {
 	/* Declare shared data */
@@ -396,7 +323,6 @@ int main() {
 	/* Initialise shared data */
 	initData(&data);
 
-<<<<<<< HEAD
 	/* Initialise threads */
 	pthread_t guest_t;
 	pthread_t waiter_t;
@@ -430,17 +356,4 @@ int main() {
 	printf("Pending: %d\n", data.log.pending);
 
 	return 0;
-=======
-	//initialise threads
-	pthread_t guest_t;
-	//pthread waiter_t;
-
-	//create threads
-	pthread_create(&guest_t, NULL, &guest, (void *)&data);
-	//pthread_create(&waiter_t, NULL, &waiter, (void *)&data);
-
-	//join threads
-	pthread_join(guest_t, NULL);
-	//pthread_join(waiter_t, NULL);
->>>>>>> aeb48d517ae03211779702bd455978cd83b88b3c
 }//main
