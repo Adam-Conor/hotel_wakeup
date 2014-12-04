@@ -3,9 +3,6 @@
  * Adam O'Flynn 12378651
  * All work is our own
  */
-/* To fix */
-/* Pending not printing properly
- */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -85,7 +82,8 @@ void fixHeap(Heap *heap, int root) {
 	for(; root * 2 <= heap->numElements ; root = childNode) {
 		childNode = root * 2;
 
-		if(childNode != heap->numElements && heap->times[childNode + 1].callTime < heap->times[childNode].callTime) {
+		if(childNode != heap->numElements && 
+			heap->times[childNode + 1].callTime < heap->times[childNode].callTime) {
 			childNode++;
 		}
 
