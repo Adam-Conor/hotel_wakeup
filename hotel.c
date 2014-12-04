@@ -3,6 +3,9 @@
  * Adam O'Flynn 12378651
  * All work is our own
  */
+/* To fix */
+/* Pending not printing properly
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +20,7 @@
 #define SLEEP 5
 #define LATEST_TIME 100
 #define MAXROOM 8000
-#define ARRAY_SIZE 1000
+#define HEAP_SIZE 5
 #define ETIMEDOUT 110
 
 /* Define structs */
@@ -28,8 +31,8 @@ typedef struct wakeupCall_t { //stuct for wake up time
 } wakeupCall_t;
 
 typedef struct Heap { //struct for the heap
-	//struct wakeupCall_t times[ARRAY_SIZE];
 	struct wakeupCall_t *times;
+	int size;
 	int numElements;
 } Heap;
 
@@ -47,17 +50,24 @@ typedef struct { //struct for holding shared data
 
 /* Heap methods */
 
+void resizeHeap(Heap *heap) {
+	heap->size = heap->numElements * 2;
+	heap->times = realloc(heap->times, heap->size * sizeof(wakeupCall_t));
+}//double the size of the heap
+
 void addTime(Heap *heap, wakeupCall_t c) {
+	/* Increment number of elements */
 	heap->numElements++;
 
 	/* resize array if too big */
-	/*if(heap->numElements > ARRAY_SIZE) {
+	if(heap->numElements >= heap->size) {
 		resizeHeap(heap);
-		}
-	 */
+	}
 
+	/* Add element to end of heap */
 	heap->times[heap->numElements] = c;
 
+	/* Fix up heap */
 	int current = heap->numElements;
 
 	while(heap->times[current / 2].callTime > c.callTime) {
@@ -70,7 +80,7 @@ void addTime(Heap *heap, wakeupCall_t c) {
 
 void fixHeap(Heap *heap, int root) {
 	int childNode;
-	wakeupCall_t tmp = heap->times[root];
+	wakeupCall_t temp = heap->times[root];
 
 	for(; root * 2 <= heap->numElements ; root = childNode) {
 		childNode = root * 2;
@@ -79,18 +89,17 @@ void fixHeap(Heap *heap, int root) {
 			childNode++;
 		}
 
-		if(heap->times[childNode].callTime < tmp.callTime) {
+		if(heap->times[childNode].callTime < temp.callTime) {
 			heap->times[root] = heap->times[childNode];
 		} else {
 			break;
 		}
 	}
 
-	heap->times[root] = tmp;
-}//fix the heap
+	heap->times[root] = temp;
+}//fix the heap after removing
 
 void removePriorty(Heap *heap) {
-	wakeupCall_t min = heap->times[1];
 	heap->times[1] = heap->times[heap->numElements--];
 	fixHeap(heap, 1);
 }//remove the first item
@@ -103,7 +112,8 @@ void initLog(logs_t *log) {
 }//initialise the logs
 
 void initHeap(Heap *harry) {
-	harry->times = malloc(sizeof(ARRAY_SIZE));
+	harry->size = HEAP_SIZE;
+	harry->times = malloc(harry->size * sizeof(struct wakeupCall_t));
 	harry->numElements = 0;
 }//initialise the heap
 
@@ -174,7 +184,7 @@ static void showWakeUp(wakeupCall_t c) {
 
 static void showLog(logs_t *log) {
 	printf("Expired Alarms: %d\nPending Alarms: %d\n\n", 
-		log->expired, log->pending);
+			log->expired, log->pending);
 }//show the log
 
 /* log methods */
@@ -188,23 +198,22 @@ void logExpired(logs_t *log) {
 	log->pending--;
 }//log an expired call
 
-void cleanupLog(logs_t log) {
-	log.pending = 0;
-}
+static void cleanupLog(logs_t *log) {
+	log->pending = 0;
+}//set pending back to 0
 
-/* Cleanup methods */
+/* Thread cleanup methods */
 
 static void * guest_cleanup(void *data_in) {
 	printf("\nThe guest thread is cleaning up...\n");
-	sharedData_t *data = data_in;
-	cleanupLog(data->log);
 	printf("The guest thread says goodbye.\n");
 }//cleanup guest thread
 
 static void * waiter_cleanup(void *data_in) {
 	printf("The waiter thread is cleaning up...\n");
 	sharedData_t *data = data_in;
-	cleanupLog(data->log);
+	cleanupLog(&data->log);
+	pthread_mutex_unlock(&data->mutex);
 	printf("The waiter  thread says goodbye.\n");
 }//cleanup waiter thread
 
@@ -234,6 +243,7 @@ static void * guest(void *data_in) {
 
 		/* Log new call */
 		logNew(&data->log);
+		//showLog(&data->log);
 
 		/* Signal waiter thread */
 		if(call.callTime == data->heap.times[1].callTime) {
@@ -244,7 +254,8 @@ static void * guest(void *data_in) {
 		pthread_mutex_unlock(&data->mutex);
 
 		/* Sleep for random seconds */
-		randomSleep();
+		//randomSleep();
+		sleep(1);
 	}
 
 	/* Cleanup and exit thread */
@@ -334,7 +345,6 @@ int main() {
 	pthread_join(waiter_t, NULL);
 
 	/* Cleanup mutex and condition varibale */
-
 	pthread_mutex_destroy(&data.mutex);
 	pthread_cond_destroy(&data.cond);
 
