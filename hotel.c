@@ -201,6 +201,7 @@ void logExpired(logs_t *log) {
 }//log an expired call
 
 static void cleanupLog(logs_t *log) {
+	log->expired = 0;
 	log->pending = 0;
 }//set pending back to 0
 
@@ -208,6 +209,8 @@ static void cleanupLog(logs_t *log) {
 
 static void * guest_cleanup(void *data_in) {
 	printf("\nThe guest thread is cleaning up...\n");
+	sharedData_t *data = data_in;
+	//pthread_mutex_unlock(&data->mutex);
 	printf("The guest thread says goodbye.\n");
 }//cleanup guest thread
 
@@ -225,7 +228,7 @@ static void * guest(void *data_in) {
 	sharedData_t *data = data_in;
 
 	/* Install a cleanup handler */
-	pthread_cleanup_push(guest_cleanup, &data->mutex);
+	pthread_cleanup_push(guest_cleanup, data);
 
 	while(1) {
 		/* Protect data */
@@ -257,7 +260,7 @@ static void * guest(void *data_in) {
 	}
 
 	/* Cleanup and exit thread */
-	pthread_cleanup_pop(0);
+	pthread_cleanup_pop(1);
 	pthread_exit(NULL);
 }
 
@@ -267,7 +270,7 @@ static void * waiter(void *data_in) {
 	sharedData_t *data = data_in;
 
 	/* Install cleanup handler */
-	pthread_cleanup_push(waiter_cleanup, &data->mutex);
+	pthread_cleanup_push(waiter_cleanup, data);
 
 	/* Wait for time */
 	while(1) {
@@ -306,7 +309,7 @@ static void * waiter(void *data_in) {
 	}
 
 	/* Cleanup and exit thread */
-	pthread_cleanup_pop(0);
+	pthread_cleanup_pop(1);
 	pthread_exit(NULL);
 }
 
