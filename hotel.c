@@ -28,7 +28,8 @@ typedef struct wakeupCall_t { //stuct for wake up time
 } wakeupCall_t;
 
 typedef struct Heap { //struct for the heap
-	struct wakeupCall_t times[ARRAY_SIZE];
+	//struct wakeupCall_t times[ARRAY_SIZE];
+	struct wakeupCall_t *times;
 	int numElements;
 } Heap;
 
@@ -51,7 +52,7 @@ void addTime(Heap *heap, wakeupCall_t c) {
 
 	/* resize array if too big */
 	/*if(heap->numElements > ARRAY_SIZE) {
-		resizeArray(heap);
+		resizeHeap(heap);
 		}
 	 */
 
@@ -102,6 +103,7 @@ void initLog(logs_t *log) {
 }//initialise the logs
 
 void initHeap(Heap *harry) {
+	harry->times = malloc(sizeof(ARRAY_SIZE));
 	harry->numElements = 0;
 }//initialise the heap
 
