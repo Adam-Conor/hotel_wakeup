@@ -49,6 +49,8 @@ typedef struct { //struct for holding shared data
 
 void resizeHeap(Heap *heap) {
 	heap->size = heap->numElements * 2;
+
+	/* Allocate an array double the size */
 	heap->times = realloc(heap->times, heap->size * sizeof(wakeupCall_t));
 }//double the size of the heap
 
@@ -184,10 +186,6 @@ static void showLog(logs_t *log) {
 	printf("Expired Alarms: %d\nPending Alarms: %d\n\n", 
 			log->expired, log->pending);
 }//show the log
-
-static void showWakeup(wakeupCall_t c){
-	printf("Wakeup ya cunt:\t%04d %s\n", c.roomNumber, ctime(&c.callTime));
-}
 	
 /* log methods */
 
@@ -208,18 +206,43 @@ static void cleanupLog(logs_t *log) {
 /* Thread cleanup methods */
 
 static void * guest_cleanup(void *data_in) {
-	printf("\nThe guest thread is cleaning up...\n");
 	sharedData_t *data = data_in;
-	//pthread_mutex_unlock(&data->mutex);
+
+	/* Protect the data */
+	pthread_mutex_lock(&data->mutex);
+
+	/* Wait for waiter thread to cancel */
+	while(data->log.pending > 0) {
+		pthread_cond_wait(&data->cond, &data->mutex);
+	}
+
+	printf("The guest thread is cleaning up...\n");
+
+	/* Unlock the mutex */
+	pthread_mutex_unlock(&data->mutex);
+
 	printf("The guest thread says goodbye.\n");
 }//cleanup guest thread
 
 static void * waiter_cleanup(void *data_in) {
-	printf("The waiter thread is cleaning up...\n");
+	printf("\nThe waiter thread is cleaning up...\n");
 	sharedData_t *data = data_in;
+
+	/* Clean up log */
 	cleanupLog(&data->log);
+
+	/* Free memory */
+	free(data->heap.times);
+
+	/* Signal guest to end */
+	if(data->log.pending == 0) {
+		pthread_cond_signal(&data->cond);
+	}
+
+	/* Unlock the mutex */
 	pthread_mutex_unlock(&data->mutex);
-	printf("The waiter  thread says goodbye.\n");
+
+	printf("The waiter thread says goodbye.\n");
 }//cleanup waiter thread
 
 /* Guest generates random wake up times */
@@ -245,7 +268,6 @@ static void * guest(void *data_in) {
 
 		/* Log new call */
 		logNew(&data->log);
-		//showLog(&data->log);
 
 		/* Signal waiter thread */
 		if(call.callTime == data->heap.times[1].callTime) {
