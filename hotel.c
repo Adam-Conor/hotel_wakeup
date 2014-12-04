@@ -22,7 +22,6 @@
 #define MAXROOM 8000
 #define HEAP_SIZE 5
 #define ETIMEDOUT 110
-#define MAXROOM 8000 
 
 /* Define structs */
 
@@ -229,9 +228,6 @@ static void * guest(void *data_in) {
 
 	/* Install a cleanup handler */
 	pthread_cleanup_push(guest_cleanup, &data->mutex);
-
-	/* Set up signal information */
-	int sig;
 
 	while(1) {
 		/* Protect data */
